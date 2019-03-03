@@ -622,19 +622,73 @@ int openttd_main(int argc, char *argv[])
 				if (mgo.opt != NULL) SetDebugString(mgo.opt);
 				break;
 			}
-		case 'e': _switch_mode = (_switch_mode == SM_LOAD_GAME || _switch_mode == SM_LOAD_SCENARIO ? SM_LOAD_SCENARIO : SM_EDITOR); break;
+		case 'e':
+			_switch_mode = (_switch_mode == SM_LOAD_GAME || _switch_mode == SM_LOAD_SCENARIO ? SM_LOAD_SCENARIO : (_switch_mode == SM_LOAD_HEIGHTMAP ? SM_LOAD_HEIGHTMAP : SM_EDITOR));
+			break;
 		case 'g':
 			if (mgo.opt != NULL) {
 				_file_to_saveload.SetName(mgo.opt);
 				bool is_scenario = _switch_mode == SM_EDITOR || _switch_mode == SM_LOAD_SCENARIO;
-				_switch_mode = is_scenario ? SM_LOAD_SCENARIO : SM_LOAD_GAME;
-				_file_to_saveload.SetMode(SLO_LOAD, is_scenario ? FT_SCENARIO : FT_SAVEGAME, DFT_GAME_FILE);
+				bool is_heightmap = _switch_mode == SM_LOAD_HEIGHTMAP;
+				_switch_mode = is_scenario ? SM_LOAD_SCENARIO : (is_heightmap ? SM_LOAD_HEIGHTMAP : SM_LOAD_GAME);
 
-				/* if the file doesn't exist or it is not a valid savegame, let the saveload code show an error */
+				/* Unfortunately, initializing file type to being invalid breaks the SafeLoad function which expects SLO_LOAD operation: initializing to dummy value */
+				/*_file_to_saveload.SetMode(FIOS_TYPE_INVALID);
+				_file_to_saveload.SetMode(SLO_INVALID, FT_INVALID, DFT_INVALID);*/
+				_file_to_saveload.SetMode(SLO_LOAD, FT_SAVEGAME, DFT_GAME_FILE);
+
+				/* If supplied file does not exist or is not a valid savegame/scenario/heightmap, let the saveload code show an error */
 				const char *t = strrchr(_file_to_saveload.name, '.');
 				if (t != NULL) {
-					FiosType ft = FiosGetSavegameListCallback(SLO_LOAD, _file_to_saveload.name, t, NULL, NULL);
-					if (ft != FIOS_TYPE_INVALID) _file_to_saveload.SetMode(ft);
+					FiosType ft;
+					ft = FiosGetSavegameListCallback(SLO_LOAD, _file_to_saveload.name, t, NULL, NULL);
+					if (ft != FIOS_TYPE_INVALID) {_file_to_saveload.SetMode(ft); _switch_mode = is_scenario || is_heightmap ? SM_LOAD_SCENARIO : SM_LOAD_GAME; break;}
+					ft = FiosGetScenarioListCallback(SLO_LOAD, _file_to_saveload.name, t, NULL, NULL);
+					if (ft != FIOS_TYPE_INVALID) {_file_to_saveload.SetMode(ft); _switch_mode = is_scenario || is_heightmap ? SM_LOAD_SCENARIO : SM_LOAD_GAME; break;}
+					ft = FiosGetHeightmapListCallback(SLO_LOAD, _file_to_saveload.name, t, NULL, NULL);
+					if (ft != FIOS_TYPE_INVALID) {_file_to_saveload.SetMode(ft); _switch_mode = is_scenario || is_heightmap ? SM_LOAD_HEIGHTMAP : SM_START_HEIGHTMAP; break;}
+				}
+
+				/* If supplied value was not recognized as a valid resource, attempt to find a matching title */
+				DeterminePaths(argv[0]);
+				TarScanner::DoScan(TarScanner::SCENARIO);
+				FileList _my_file_list;
+				const FiosItem *item;
+
+				_my_file_list.BuildFileList(FT_SAVEGAME, SLO_LOAD);
+				item = _my_file_list.FindItem(mgo.opt);
+				if (item != NULL) {
+					if (GetAbstractFileType(item->type) == FT_SAVEGAME) {
+						_file_to_saveload.SetMode(item->type);
+						_file_to_saveload.SetName(FiosBrowseTo(item));
+						_file_to_saveload.SetTitle(item->title);
+					}
+					_switch_mode = is_scenario || is_heightmap ? SM_LOAD_SCENARIO : SM_LOAD_GAME;
+					break;
+				}
+
+				_my_file_list.BuildFileList(FT_SCENARIO, SLO_LOAD);
+				item = _my_file_list.FindItem(mgo.opt);
+				if (item != NULL) {
+					if (GetAbstractFileType(item->type) == FT_SCENARIO) {
+						_file_to_saveload.SetMode(item->type);
+						_file_to_saveload.SetName(FiosBrowseTo(item));
+						_file_to_saveload.SetTitle(item->title);
+					}
+					_switch_mode = is_scenario || is_heightmap ? SM_LOAD_SCENARIO : SM_LOAD_GAME;
+					break;
+				}
+
+				_my_file_list.BuildFileList(FT_HEIGHTMAP, SLO_LOAD);
+				item = _my_file_list.FindItem(mgo.opt);
+				if (item != NULL) {
+					if (GetAbstractFileType(item->type) == FT_HEIGHTMAP) {
+						_file_to_saveload.SetMode(item->type);
+						_file_to_saveload.SetName(FiosBrowseTo(item));
+						_file_to_saveload.SetTitle(item->title);
+					}
+					_switch_mode = is_scenario || is_heightmap ? SM_LOAD_HEIGHTMAP : SM_START_HEIGHTMAP;
+					break;
 				}
 
 				break;
