@@ -641,11 +641,23 @@ int openttd_main(int argc, char *argv[])
 				if (t != NULL) {
 					FiosType ft;
 					ft = FiosGetSavegameListCallback(SLO_LOAD, _file_to_saveload.name, t, NULL, NULL);
-					if (ft != FIOS_TYPE_INVALID) {_file_to_saveload.SetMode(ft); _switch_mode = is_scenario ? SM_LOAD_SCENARIO : SM_LOAD_GAME; break;}
+					if (ft != FIOS_TYPE_INVALID) {
+						_file_to_saveload.SetMode(ft);
+						_switch_mode = is_scenario ? SM_LOAD_SCENARIO : SM_LOAD_GAME;
+						break;
+					}
 					ft = FiosGetScenarioListCallback(SLO_LOAD, _file_to_saveload.name, t, NULL, NULL);
-					if (ft != FIOS_TYPE_INVALID) {_file_to_saveload.SetMode(ft); _switch_mode = is_scenario ? SM_LOAD_SCENARIO : SM_LOAD_GAME; break;}
+					if (ft != FIOS_TYPE_INVALID) {
+						_file_to_saveload.SetMode(ft);
+						_switch_mode = is_scenario ? SM_LOAD_SCENARIO : SM_LOAD_GAME;
+						break;
+					}
 					ft = FiosGetHeightmapListCallback(SLO_LOAD, _file_to_saveload.name, t, NULL, NULL);
-					if (ft != FIOS_TYPE_INVALID) {_file_to_saveload.SetMode(ft); _switch_mode = is_scenario ? SM_LOAD_HEIGHTMAP : SM_START_HEIGHTMAP; break;}
+					if (ft != FIOS_TYPE_INVALID) {
+						_file_to_saveload.SetMode(ft);
+						_switch_mode = is_scenario ? SM_LOAD_HEIGHTMAP : SM_START_HEIGHTMAP;
+						break;
+					}
 				}
 
 				/* If supplied value was not recognized as a valid resource, attempt to find a matching title */
